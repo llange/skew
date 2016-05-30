@@ -78,8 +78,9 @@ class AWSClient(object):
                 pill.record()
             elif self.placebo_mode == 'playback':
                 pill.playback()
-        return session.client(self.service_name,
-                              region_name=self.region_name if self.region_name else None)
+        return session.client(
+            self.service_name,
+            region_name=self.region_name if self.region_name else None)
 
     def call(self, op_name, query=None, **kwargs):
         """
@@ -142,3 +143,14 @@ def get_awsclient(service_name, region_name, account_id, **kwargs):
     if region_name == '':
         region_name = None
     return AWSClient(service_name, region_name, account_id, **kwargs)
+
+
+class SkewSessionFactory(object):
+
+    def __init__(self, region, account, **kwargs):
+        self.region_name = region
+        self.account = account
+        self.kwargs = kwargs
+
+    def get_client(self, service_name):
+        return AWSClient(service_name, self.region_name, self.account, **self.kwargs)
