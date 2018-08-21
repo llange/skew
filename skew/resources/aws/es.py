@@ -32,8 +32,8 @@ class ElasticsearchDomain(AWSResource):
         date = None
         dimension = 'DomainName'
 
-    def __init__(self, client, data, query=None):
-        super(ElasticsearchDomain, self).__init__(client, data, query)
+    def __init__(self, session_factory, client, data, query=None):
+        super(ElasticsearchDomain, self).__init__(session_factory, client, data, query)
         self._id = data
         detail_op, param_name, detail_path = self.Meta.detail_spec
         params = {param_name: self.id}
