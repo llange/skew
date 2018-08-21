@@ -79,7 +79,6 @@ ResourceTypes = {
     'aws.ec2.vpc': 'aws.ec2.Vpc',
     'aws.ec2.vpc-peering-connection': 'aws.ec2.VpcPeeringConnection',
     'aws.ec2.subnet': 'aws.ec2.Subnet',
-    # TODO - used : ec2 natgateway
     #ecr # TODO - used
     # TODO - used : ecr repository
     #ecs
