@@ -55,7 +55,7 @@ class Resource(object):
             # if the error is because the resource was not found, be quiet
             if 'NotFound' not in e.response['Error']['Code']:
                 raise
-        LOG.debug(data)
+        # LOG.debug(data)
         resources = []
         if data:
             for d in data:
@@ -100,6 +100,26 @@ class Resource(object):
             self._client.region_name,
             self._client.account_id,
             self.resourcetype, self.id)
+
+    @property
+    def scheme(self):
+        return 'arn'
+
+    @property
+    def provider(self):
+        return 'aws'
+
+    @property
+    def service(self):
+        return self._client.service_name
+
+    @property
+    def region(self):
+        return self._client.region_name
+
+    @property
+    def account(self):
+        return self._client.account_id
 
     @property
     def resourcetype(self):
