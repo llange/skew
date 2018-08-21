@@ -115,6 +115,7 @@ class AWSResource(Resource):
         self._name = None
         self._date = None
         self._tags = None
+        self._tags_expected = None
 
     def __repr__(self):
         return self.arn
@@ -140,16 +141,31 @@ class AWSResource(Resource):
         return self._metrics
 
     @property
+    def tags_expected(self):
+        """
+        True if tags are reasonably expected (either the function returns
+        a -possibly empty- Tags entry, or we have a 'tags_spec').
+        False if to the best of our knowledge no tags are possible on this
+        resource.
+        """
+        if self._tags_expected is None:
+            self._tags_expected = False
+            self.tags
+        return self._tags_expected
+
+
+    @property
     def tags(self):
         """
         Convert the ugly Tags JSON into a real dictionary and
         memorize the result.
         """
         if self._tags is None:
-            LOG.debug('need to build tags')
+            LOG.debug('need to build tags, data:%s', self.data)
             self._tags = {}
 
             if hasattr(self.Meta, 'tags_spec') and (self.Meta.tags_spec is not None):
+                self._tags_expected = True
                 LOG.debug('have a tags_spec')
                 method, path, param_name, param_value = self.Meta.tags_spec[:4]
                 kwargs = {}
@@ -166,6 +182,7 @@ class AWSResource(Resource):
                 LOG.debug(self.data['Tags'])
 
             if 'Tags' in self.data:
+                self._tags_expected = True
                 _tags = self.data['Tags']
                 if isinstance(_tags, list):
                     for kvpair in _tags:
