@@ -118,6 +118,10 @@ class AWSResource(Resource):
         return self.arn
 
     @property
+    def account_name(self):
+        return self._client.account_name
+
+    @property
     def arn(self):
         return 'arn:aws:%s:%s:%s:%s/%s' % (
             self.Meta.service,

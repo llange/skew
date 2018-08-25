@@ -18,6 +18,7 @@ import time
 import datetime
 import jmespath
 import boto3
+import warnings
 from botocore.exceptions import ClientError
 
 from skew.config import get_config
@@ -34,6 +35,38 @@ def json_encoder(obj):
 
 
 class AWSClient(object):
+
+    _cached_credentials = {}
+    _cached_identity = {}
+    _cached_alias = {}
+
+    @property
+    def cached_credentials(self):
+        return self._cached_credentials
+
+    @cached_credentials.setter
+    def cached_credentials(self, val):
+        self._cached_credentials = val
+
+    @property
+    def cached_identity(self):
+        return self._cached_identity
+
+    @cached_identity.setter
+    def cached_identity(self, val):
+        self._cached_identity = val
+
+    @property
+    def cached_alias(self):
+        return self._cached_alias
+
+    @cached_alias.setter
+    def cached_alias(self, val):
+        self._cached_alias = val
+
+    @property
+    def account_name(self):
+        return self._cached_alias.get(self._account_id)
 
     def __init__(self, service_name, region_name, account_id, **kwargs):
         self._config = get_config()
@@ -78,6 +111,41 @@ class AWSClient(object):
                 pill.record()
             elif self.placebo_mode == 'playback':
                 pill.playback()
+
+        if (self.account_id not in self.cached_identity):
+            sts_client = session.client('sts')
+            LOG.debug("sts_client:%s" % (sts_client))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                identity = sts_client.get_caller_identity()
+            LOG.debug("identity:%s" % (identity))
+            self.cached_identity[self.account_id] = {}
+            self.cached_identity[self.account_id]['UserId'] = identity.get('UserId')
+            self.cached_identity[self.account_id]['Account'] = identity.get('Account')
+            self.cached_identity[self.account_id]['Arn'] = identity.get('Arn')
+            LOG.debug("Region:%s Account:%s Identity:%s" % (self._region_name, self.account_id, self.cached_identity[self.account_id]))
+        else:
+            LOG.debug("Region:%s Account:%s Identity from cache:%s" % (self._region_name, self.account_id, self.cached_identity[self.account_id]))
+        # self._identity_userid = self.cached_identity.get('UserId')
+        # self._identity_account = self.cached_identity.get('Account')
+        # self._identity_arn = self.cached_identity.get('Arn')
+
+        if (self.account_id not in self.cached_alias):
+            iam_client = session.client('iam')
+            LOG.debug("iam_client:%s" % (iam_client))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                accountaliases = iam_client.list_account_aliases()
+            LOG.debug("Aliases:%s" % (accountaliases))
+            if len(accountaliases.get('AccountAliases', [])) > 0:
+                accountalias = "%s (%s)" % (self.cached_identity.get(self.account_id, {}).get('Account'), accountaliases.get('AccountAliases')[0])
+            else:
+                accountalias = "%s" % (self.cached_identity.get(self.account_id, {}).get('Account'))
+            self.cached_alias[self.account_id] = accountalias
+            LOG.debug("Region:%s Account:%s Stored account alias:%s" % (self._region_name, self.account_id, self.cached_alias[self.account_id]))
+        else:
+            LOG.debug("Region:%s Account:%s Cached account alias:%s" % (self._region_name, self.account_id, self.cached_alias[self.account_id]))
+
         return session.client(
             self.service_name,
             region_name=self.region_name if self.region_name else None)
