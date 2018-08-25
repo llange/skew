@@ -102,7 +102,7 @@ ResourceTypes = {
     # AWS Firewall Manager    fms
     # Amazon FreeRTOS     freertos
     #gamelift
-    #glacier
+    'aws.glacier.vault': 'aws.glacier.Vault',
     # AWS Glue    glue
     # AWS Greengrass  greengrass
     # Amazon GuardDuty    guardduty
