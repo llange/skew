@@ -144,7 +144,17 @@ class Account(ARNComponent):
         super(Account, self).__init__(pattern, arn)
 
     def choices(self, context=None):
-        return list(self._accounts.keys())
+        LOG.debug('Account choices %s', context)
+        if context and (len(context)>1):
+            wanted_partition = context[1]
+            account_choices = []
+            for account, account_obj in iteritems(self._accounts):
+                account_partition = account_obj.get('partition', 'aws')
+                if account_partition == wanted_partition:
+                    account_choices.append(account)
+            return account_choices
+        else:
+            return list(self._accounts.keys())
 
     def enumerate(self, context, **kwargs):
         LOG.debug('Account.enumerate %s', context)
