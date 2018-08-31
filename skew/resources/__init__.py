@@ -13,14 +13,33 @@
 # language governing permissions and limitations under the License.
 
 import importlib
+import logging
+from six import iteritems
+
+LOG = logging.getLogger(__name__)
 
 # Maps resources names as they appear in ARN's to the path name
 # of the Python class representing that resource.
 # Cf http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces
-ResourceTypes = {
+#
+# NOTE : the key represents the <partition>.<service>.<resource> ; while the value represents the Python class path.
+# <partition> can be one of 'aws', 'aws-cn', 'aws-us-gov', ...
+# By default, the mapping defined for 'aws' partitions will also be used for other partitions ('aws-cn', 'aws-us-gov', ...)
+# without any specific definition.
+# If you know that for a specific partition, the service+resource needs to be handled differently that in the 'aws' partition,
+# then you can define a specific mapping (like : 'aws-cn.ec2.subnet': 'aws.ec2.ChinaSubnet' for example) that will be used instead
+# But again, by default the mapping is used for all partitions.
+ResourceTypesTemplate = {
     # Alexa for Business  a4b
+    #   arn:aws:a4b:region:accountid:resourcetype/resource
+    #   arn:aws:a4b:us-east-1:123456789012:room/7315ffdf0eeb874dc4ab8a546e8b70ec/5f90e5d608b6baa9c88db56654aef158
     'aws.apigateway.restapis': 'aws.apigateway.RestAPI',
-    # - execute-api
+    #   arn:aws:apigateway:region::resource-path
+    #   arn:aws:execute-api:region:account-id:api-id/stage-name/HTTP-VERB/resource-path
+    #   arn:aws:apigateway:us-east-1::/restapis/a123456789012bc3de45678901f23a45/*
+    #   arn:aws:apigateway:us-east-1::a123456789012bc3de45678901f23a45:/test/mydemoresource/*
+    #   arn:aws:apigateway:*::a123456789012bc3de45678901f23a45:/*/petstorewalkthrough/pets
+    #   arn:aws:execute-api:us-east-1:123456789012:qsxrty/test/GET/mydemoresource/*
     # AWS Application Discovery Service   discovery
     #appstream
     # AWS AppSync     appsync
@@ -93,7 +112,10 @@ ResourceTypes = {
     # TODO - used : elasticloadbalancing loadbalancer
     # Ex: (ALB) arn:aws:elasticloadbalancing:eu-west-1:130536754160:loadbalancer/app/reportv3alb/920cc2fd6817052a
     'aws.elb.loadbalancer': 'aws.elb.LoadBalancer',
-    #elasticmapreduce
+    'aws.elbv2.loadbalancer': 'aws.elb.LoadBalancerV2',
+    # 'aws.elasticloadbalancing.loadbalancer': 'aws.elb.LoadBalancers',
+    'aws.elasticmapreduce.cluster': 'aws.emr.Cluster',
+
     #elastictranscoder
     'aws.elasticache.cluster': 'aws.elasticache.Cluster',
     'aws.elasticache.subnet-group': 'aws.elasticache.SubnetGroup',
@@ -187,6 +209,18 @@ ResourceTypes = {
     # AWS X-Ray   xray
 }
 
+ResourceTypes = ResourceTypesTemplate.copy()
+for key, value in iteritems(ResourceTypesTemplate):
+    t = key.split('.')
+    if (t[0] == 'aws'):
+        t[0] = 'aws-cn'
+        new_key = '.'.join(t)
+        if new_key not in ResourceTypes:
+            ResourceTypes[new_key] = value
+        t[0] = 'aws-us-gov'
+        new_key = '.'.join(t)
+        if new_key not in ResourceTypes:
+            ResourceTypes[new_key] = value
 
 def all_providers():
     providers = set()

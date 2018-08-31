@@ -17,11 +17,14 @@ import logging
 import re
 
 from six.moves import zip_longest
+from six import iteritems
 import jmespath
 
 import skew.resources
 from skew.config import get_config
 from skew.awsclient import SkewSessionFactory
+
+import botocore
 
 LOG = logging.getLogger(__name__)
 DebugFmtString = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -154,51 +157,20 @@ class Account(ARNComponent):
 
 
 class Region(ARNComponent):
-    _all_region_names = ['us-east-1',
-                         'us-east-2',
-                         'us-west-1',
-                         'us-west-2',
-                         'eu-west-1',
-                         'eu-west-2',
-                         'eu-central-1',
-                         'ap-southeast-1',
-                         'ap-southeast-2',
-                         'ap-northeast-1',
-                         'ap-northeast-2',
-                         'ap-south-1',
-                         'ca-central-1',
-                         'sa-east-1']
-
-    _region_names_limited = ['us-east-1',
-                             'us-west-2',
-                             'eu-west-1',
-                             'ap-southeast-1',
-                             'ap-southeast-2',
-                             'ap-northeast-1']
-
-    _no_region_required = ['']
-
-    _service_region_map = {
-        'redshift': _all_region_names,
-        'glacier': ['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1',
-                    'eu-west-1', 'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'],
-        'kinesis': _region_names_limited,
-        'cloudfront': _no_region_required,
-        'iam': _no_region_required,
-        'route53': _no_region_required,
-        'lambda': ['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'eu-central-1',
-                   'eu-west-1', 'eu-west-2', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'],
-        'firehose': ['us-east-1', 'us-west-2', 'eu-west-1'],
-        'apigateway': ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-northeast-1'],
-    }
 
     def choices(self, context=None):
         if context:
-            service = context[2]
+            partition_name = context[1]
+            service_name = context[2]
         else:
-            service = self._arn.service
-        return self._service_region_map.get(
-            service, self._all_region_names)
+            partition_name = self._arn.provider
+            service_name = self._arn.service
+        if service_name == 'elasticmapreduce':
+            service_name = 'emr'
+        regions = botocore.session.Session().get_available_regions("%s" % (service_name), partition_name="%s" % (partition_name))
+        if (len(regions) == 0):
+            regions = ['']
+        return regions
 
     def enumerate(self, context, **kwargs):
         LOG.debug('Region.enumerate %s', context)
@@ -232,7 +204,7 @@ class Service(ARNComponent):
 class Provider(ARNComponent):
 
     def choices(self, context=None):
-        return ['aws']
+        return botocore.session.Session().get_available_partitions()
 
     def enumerate(self, context, **kwargs):
         LOG.debug('Provider.enumerate %s', context)

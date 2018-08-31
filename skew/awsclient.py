@@ -18,6 +18,7 @@ import time
 import datetime
 import jmespath
 import boto3
+import botocore.session
 import warnings
 from botocore.exceptions import ClientError
 
@@ -74,10 +75,11 @@ class AWSClient(object):
         self._region_name = region_name
         self._account_id = account_id
         self._has_credentials = False
+        self._profile = None
         self.aws_creds = kwargs.get('aws_creds')
         if self.aws_creds is None:
             # no aws_creds, need profile to get creds from ~/.aws/credentials
-            self._profile = self._config['accounts'][account_id]['profile']
+            self._profile = self._config['accounts'][account_id].get('profile')
         self.placebo = kwargs.get('placebo')
         self.placebo_dir = kwargs.get('placebo_dir')
         self.placebo_mode = kwargs.get('placebo_mode', 'record')
@@ -100,11 +102,28 @@ class AWSClient(object):
         return self._profile
 
     def _create_client(self):
+        region = self._region_name
+        LOG.debug("region: %r" % (region))
+        if not region:
+            partition = self._config['accounts'][self._account_id].get('partition', 'aws')
+            LOG.debug("partition: %r" % (partition))
+            null_session = botocore.session.get_session()
+            available_regions = null_session.get_available_regions('iam', partition_name=partition)
+            LOG.debug("available_regions: %r" % (available_regions))
+            if len(available_regions) > 0:
+                region = available_regions[0]
+        LOG.debug("region: %r" % (region))
+
         if self.aws_creds:
+            LOG.warn("Session with creds %r", self.aws_creds)
             session = boto3.Session(**self.aws_creds)
+        elif self.profile is not None:
+            LOG.warn("Session with profile : %s", self.profile)
+            session = boto3.Session(profile_name=self.profile, region_name=region)
         else:
-            session = boto3.Session(
-                profile_name=self.profile)
+            LOG.warn("Session")
+            session = boto3.Session(region_name=region)
+
         if self.placebo and self.placebo_dir:
             pill = self.placebo.attach(session, self.placebo_dir)
             if self.placebo_mode == 'record':
@@ -148,7 +167,7 @@ class AWSClient(object):
 
         return session.client(
             self.service_name,
-            region_name=self.region_name if self.region_name else None)
+            region_name=self.region_name)
 
     def call(self, op_name, query=None, **kwargs):
         """
@@ -181,9 +200,31 @@ class AWSClient(object):
         if query:
             query = jmespath.compile(query)
         if self._client.can_paginate(op_name):
-            paginator = self._client.get_paginator(op_name)
-            results = paginator.paginate(**kwargs)
-            data = results.build_full_result()
+            done = False
+            data = {}
+            while not done:
+                try:
+                    paginator = self._client.get_paginator(op_name)
+                    results = paginator.paginate(**kwargs)
+                    data = results.build_full_result()
+                    done = True
+                except ClientError as e:
+                    LOG.exception(e)
+                    LOG.debug(kwargs)
+                    if 'Throttling' in str(e):
+                        time.sleep(1)
+                    elif 'AccessDenied' in str(e):
+                        done = True
+                    elif 'NoSuchTagSet' in str(e):
+                        done = True
+                    elif 'UnsupportedOperation' in str(e):
+                        done = True
+                    elif 'ResourceNotFoundFault' in str(e):
+                        done = True
+                except Exception as e:
+                    LOG.exception(e)
+                    LOG.debug(kwargs)
+                    done = True
         else:
             op = getattr(self._client, op_name)
             done = False
@@ -193,14 +234,20 @@ class AWSClient(object):
                     data = op(**kwargs)
                     done = True
                 except ClientError as e:
-                    LOG.debug(e, kwargs)
+                    # LOG.exception(e)
+                    # LOG.debug(kwargs)
                     if 'Throttling' in str(e):
                         time.sleep(1)
                     elif 'AccessDenied' in str(e):
                         done = True
                     elif 'NoSuchTagSet' in str(e):
                         done = True
-                except Exception:
+                    elif 'UnsupportedOperation' in str(e):
+                        done = True
+                    elif 'ResourceNotFoundFault' in str(e):
+                        done = True
+                except Exception as e:
+                    LOG.exception(e)
                     done = True
         if query:
             data = query.search(data)
