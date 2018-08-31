@@ -14,6 +14,9 @@
 
 from skew.resources.aws import AWSResource
 
+import logging
+
+LOG = logging.getLogger(__name__)
 
 class LoadBalancer(AWSResource):
 
@@ -31,3 +34,34 @@ class LoadBalancer(AWSResource):
         dimension = 'LoadBalancerName'
         tags_spec = ('describe_tags', 'TagDescriptions[].Tags[]',
                      'LoadBalancerNames', 'id')
+
+class LoadBalancerV2(AWSResource):
+
+    class Meta(object):
+        service = 'elbv2'
+        type = 'loadbalancer'
+        enum_spec = ('describe_load_balancers',
+                     'LoadBalancers', None)
+        detail_spec = None
+        id = 'LoadBalancerArn'
+        filter_name = 'LoadBalancerArns'
+        filter_type = 'list'
+        name = 'DNSName'
+        date = 'CreatedTime'
+        dimension = 'LoadBalancerArn'
+        tags_spec = ('describe_tags', 'TagDescriptions[].Tags[]',
+                     'ResourceArns', 'id')
+
+    # @classmethod
+    # def enumerate(cls, session_factory, arn, resource_id=None):
+    #     LOG.warn('enumerate arn=%r, resource_id=%r' % (arn, resource_id))
+
+    #     resources = super(LoadBalancerV2, cls).enumerate(
+    #         session_factory, arn, resource_id)
+
+    #     return resources
+
+    @property
+    def arn(self):
+        # LOG.warn('arn: id=%r' % (self.id))
+        return '%s' % (self.id)
