@@ -28,3 +28,5 @@ class Cluster(AWSResource):
         name = 'ClusterIdentifier'
         date = 'ClusterCreateTime'
         dimension = 'ClusterIdentifier'
+        tags_spec = ('describe_tags', 'TaggedResources[]',
+                     'ResourceName', 'arn')
