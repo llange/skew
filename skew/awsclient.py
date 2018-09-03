@@ -72,7 +72,9 @@ class AWSClient(object):
     def __init__(self, service_name, region_name, account_id, **kwargs):
         self._config = get_config()
         self._service_name = service_name
-        self._region_name = region_name
+        self._region_name = None
+        if (len(region_name) > 0):
+            self._region_name = region_name
         self._account_id = account_id
         self._has_credentials = False
         self._profile = None
@@ -103,26 +105,32 @@ class AWSClient(object):
 
     def _create_client(self):
         region = self._region_name
-        LOG.debug("region: %r" % (region))
-        if not region:
-            partition = self._config['accounts'][self._account_id].get('partition', 'aws')
-            LOG.debug("partition: %r" % (partition))
-            null_session = botocore.session.get_session()
-            available_regions = null_session.get_available_regions('iam', partition_name=partition)
-            LOG.debug("available_regions: %r" % (available_regions))
-            if len(available_regions) > 0:
-                region = available_regions[0]
+        LOG.debug("_create_client() service_name: %r, region_name: %r, account_id: %r" % (self._service_name, self._region_name, self._account_id))
+
+        if region == '':
+            region = None
         LOG.debug("region: %r" % (region))
 
         if self.aws_creds:
-            LOG.warn("Session with creds %r", self.aws_creds)
+            LOG.debug("Session with creds %r", self.aws_creds)
             session = boto3.Session(**self.aws_creds)
         elif self.profile is not None:
-            LOG.warn("Session with profile : %s", self.profile)
-            session = boto3.Session(profile_name=self.profile, region_name=region)
+            LOG.debug("Session with profile : %s", self.profile)
+            if region:
+                LOG.debug("Region")
+                session = boto3.Session(profile_name=self.profile, region_name=region)
+            else:
+                LOG.debug("Not Region")
+                session = boto3.Session(profile_name=self.profile)
         else:
-            LOG.warn("Session")
-            session = boto3.Session(region_name=region)
+            LOG.debug("Session")
+            if region:
+                LOG.debug("Region")
+                session = boto3.Session(region_name=region)
+            else:
+                LOG.debug("Not Region")
+                session = boto3.Session()
+        LOG.debug("session: %r" % (session))
 
         if self.placebo and self.placebo_dir:
             pill = self.placebo.attach(session, self.placebo_dir)
