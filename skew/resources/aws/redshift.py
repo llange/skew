@@ -30,3 +30,10 @@ class Cluster(AWSResource):
         dimension = 'ClusterIdentifier'
         tags_spec = ('describe_tags', 'TaggedResources[]',
                      'ResourceName', 'arn')
+
+    @property
+    def arn(self):
+        return 'arn:aws:%s:%s:%s:%s:%s' % (
+            self._client.service_name,
+            self._client.region_name,
+            self._client.account_id, self.resourcetype, self.id)
