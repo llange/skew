@@ -189,12 +189,28 @@ class AWSResource(Resource):
                 _tags = self.data['Tags']
                 if isinstance(_tags, list):
                     for kvpair in _tags:
-                        if kvpair['Key'] in self._tags:
-                            if not isinstance(self._tags[kvpair['Key']], list):
-                                self._tags[kvpair['Key']] = [self._tags[kvpair['Key']]]
-                            self._tags[kvpair['Key']].append(kvpair['Value'])
+                        if 'Key' in kvpair:
+                            if kvpair['Key'] in self._tags:
+                                if not isinstance(self._tags[kvpair['Key']], list):
+                                    self._tags[kvpair['Key']] = [self._tags[kvpair['Key']]]
+                                self._tags[kvpair['Key']].append(kvpair['Value'])
+                            else:
+                                self._tags[kvpair['Key']] = kvpair['Value']
                         else:
-                            self._tags[kvpair['Key']] = kvpair['Value']
+                            # Redshift clusters Tag format is specific
+                            if 'Tag' in kvpair:
+                                tag = kvpair.get('Tag', {})
+                                if 'Key' in tag:
+                                    key = tag.get('Key')
+                                    value = tag.get('Value')
+                                    if key in self._tags:
+                                        if not isinstance(self._tags[key], list):
+                                            self._tags[key] = [self._tags[key]]
+                                        self._tags[key].append(value)
+                                    else:
+                                        self._tags[key] = value
+                            else:
+                                LOG.critical("'Key' not found in kvpair: %r", kvpair)
                 elif isinstance(_tags, dict):
                     self._tags = _tags
         return self._tags
