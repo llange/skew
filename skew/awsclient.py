@@ -209,7 +209,7 @@ class AWSClient(object):
                     data = results.build_full_result()
                     done = True
                 except ClientError as e:
-                    LOG.exception(e)
+                    LOG.exception(str(e))
                     LOG.debug(kwargs)
                     if 'Throttling' in str(e):
                         time.sleep(1)
@@ -222,7 +222,7 @@ class AWSClient(object):
                     elif 'ResourceNotFoundFault' in str(e):
                         done = True
                 except Exception as e:
-                    LOG.exception(e)
+                    LOG.exception(str(e))
                     LOG.debug(kwargs)
                     done = True
         else:
@@ -247,7 +247,7 @@ class AWSClient(object):
                     elif 'ResourceNotFoundFault' in str(e):
                         done = True
                 except Exception as e:
-                    LOG.exception(e)
+                    LOG.exception(str(e))
                     done = True
         if query:
             data = query.search(data)
