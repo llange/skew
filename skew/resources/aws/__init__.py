@@ -123,7 +123,8 @@ class AWSResource(Resource):
 
     @property
     def arn(self):
-        return 'arn:aws:%s:%s:%s:%s/%s' % (
+        return 'arn:%s:%s:%s:%s:%s/%s' % (
+            self.provider,
             self.Meta.service,
             self._session.region_name,
             self._session.account, self.resourcetype, self.id)

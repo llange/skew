@@ -19,7 +19,8 @@ class Route53Resource(AWSResource):
 
     @property
     def arn(self):
-        return 'arn:aws:%s:::%s/%s' % (
+        return 'arn:%s:%s:::%s/%s' % (
+            self.provider,
             self._client.service_name, self.resourcetype, self.id)
 
 

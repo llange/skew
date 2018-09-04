@@ -34,7 +34,8 @@ class Cluster(AWSResource):
 
     @property
     def arn(self):
-        return 'arn:aws:%s:%s:%s:%s:%s' % (
+        return 'arn:%s:%s:%s:%s:%s:%s' % (
+            self.provider,
             self._client.service_name,
             self._client.region_name,
             self._client.account_id, self.resourcetype, self.id)
@@ -74,7 +75,8 @@ class Snapshot(AWSResource):
 
     @property
     def arn(self):
-        return 'arn:aws:%s:%s:%s:%s:%s' % (
+        return 'arn:%s:%s:%s:%s:%s:%s' % (
+            self.provider,
             self._client.service_name,
             self._client.region_name,
             self._client.account_id, self.resourcetype, self.id)

@@ -100,7 +100,8 @@ class Resource(object):
 
     @property
     def arn(self):
-        return 'arn:aws:%s:%s:%s:%s/%s' % (
+        return 'arn:%s:%s:%s:%s:%s/%s' % (
+            self.provider,
             self._client.service_name,
             self._client.region_name,
             self._client.account_id,
@@ -112,7 +113,7 @@ class Resource(object):
 
     @property
     def provider(self):
-        return 'aws'
+        return self._client.partition_name
 
     @property
     def service(self):
