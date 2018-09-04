@@ -14,6 +14,7 @@
 
 import importlib
 import logging
+import botocore.session
 from six import iteritems
 
 LOG = logging.getLogger(__name__)
@@ -209,18 +210,35 @@ ResourceTypesTemplate = {
     # AWS X-Ray   xray
 }
 
+# Create (by duplication of the main set) new set of
+# resource definition for all other partitions.
+# This occurs only if the service is not already explicitely defined.
+# Only services supported by those partitions are duplicated
 ResourceTypes = ResourceTypesTemplate.copy()
+null_session = botocore.session.Session()
+all_partitions = null_session.get_available_partitions()
+
 for key, value in iteritems(ResourceTypesTemplate):
     t = key.split('.')
-    if (t[0] == 'aws'):
-        t[0] = 'aws-cn'
-        new_key = '.'.join(t)
-        if new_key not in ResourceTypes:
-            ResourceTypes[new_key] = value
-        t[0] = 'aws-us-gov'
-        new_key = '.'.join(t)
-        if new_key not in ResourceTypes:
-            ResourceTypes[new_key] = value
+    resource_partition = t[0]
+    resource_boto_service = t[1]
+    if (resource_partition == 'aws'):
+        for partition in all_partitions:
+
+            # Main partition, already defined
+            if partition == 'aws':
+                continue
+
+            # Remove services not existing for this partition
+            regions = null_session.get_available_regions("%s" % (resource_boto_service), partition_name="%s" % (partition))
+            if not regions or (len(regions) == 0):
+                continue
+
+            # Let's define resources for this new partition
+            t[0] = partition
+            new_key = '.'.join(t)
+            if new_key not in ResourceTypes:
+                ResourceTypes[new_key] = value
 
 def all_providers():
     providers = set()
