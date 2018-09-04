@@ -85,8 +85,8 @@ class AWSClient(object):
         self.placebo = kwargs.get('placebo')
         self.placebo_dir = kwargs.get('placebo_dir')
         self.placebo_mode = kwargs.get('placebo_mode', 'record')
-        self._client = self._create_client()
         self._partition_name = self._config['accounts'][self._account_id].get('partition', 'aws')
+        self._client = self._create_client()
 
     @property
     def service_name(self):
