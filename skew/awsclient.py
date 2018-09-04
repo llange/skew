@@ -116,6 +116,34 @@ class AWSClient(object):
             region = None
         LOG.debug("region: %r" % (region))
 
+        # Unsupported way to retrieve 'global' main region for a given partition
+        if region is None:
+            finished = False
+            LOG.debug("partition: %r" % (self.partition))
+            null_session = botocore.session.get_session()
+            available_regions = null_session.get_available_regions('iam', partition_name=self.partition, allow_non_regional=True)
+
+            LOG.debug("available_regions: %r" % (available_regions))
+            if len(available_regions) > 0:
+                global_region = available_regions[0]
+            else:
+                LOG.warn("Strange, get_available_regions('iam', partition_name=%r, allow_non_regional=True) returned empty response %r", partition, available_regions)
+                finished = True
+
+            if not finished:
+                resolver = null_session.get_component('endpoint_resolver')
+                LOG.debug("resolver: %r" % (resolver))
+                finished = (resolver is None)
+
+            if not finished:
+                endpoint = resolver.construct_endpoint('iam', region_name=global_region)
+                LOG.debug("endpoint: %r" % (endpoint))
+                finished = ((endpoint is None) or (len(endpoint) == 0))
+
+            if not finished:
+                region = endpoint.get('credentialScope', {}).get('region')
+                LOG.debug("region: %r" % (region))
+
         if self.aws_creds:
             LOG.debug("Session with creds %r", self.aws_creds)
             session = boto3.Session(**self.aws_creds)
