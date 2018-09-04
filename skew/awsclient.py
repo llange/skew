@@ -119,15 +119,15 @@ class AWSClient(object):
         # Unsupported way to retrieve 'global' main region for a given partition
         if region is None:
             finished = False
-            LOG.debug("partition: %r" % (self.partition))
+            LOG.debug("partition: %r" % (self.partition_name))
             null_session = botocore.session.get_session()
-            available_regions = null_session.get_available_regions('iam', partition_name=self.partition, allow_non_regional=True)
+            available_regions = null_session.get_available_regions('iam', partition_name=self.partition_name, allow_non_regional=True)
 
             LOG.debug("available_regions: %r" % (available_regions))
             if len(available_regions) > 0:
                 global_region = available_regions[0]
             else:
-                LOG.warn("Strange, get_available_regions('iam', partition_name=%r, allow_non_regional=True) returned empty response %r", partition, available_regions)
+                LOG.warn("Strange, get_available_regions('iam', partition_name=%r, allow_non_regional=True) returned empty response %r", self.partition_name, available_regions)
                 finished = True
 
             if not finished:
