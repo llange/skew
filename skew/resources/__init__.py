@@ -240,6 +240,7 @@ for key, value in iteritems(ResourceTypesTemplate):
             if new_key not in ResourceTypes:
                 ResourceTypes[new_key] = value
 
+
 def all_providers():
     providers = set()
     for resource_type in ResourceTypes:
